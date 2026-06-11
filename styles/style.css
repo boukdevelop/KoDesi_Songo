@@ -1,0 +1,336 @@
+/* Fond de cour en terre battue */
+body {
+  background: radial-gradient(ellipse at center, #5a3e2b 0%, #2b1a0f 100%);
+  position: relative;
+  margin: 0;
+  padding: 20px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.contain {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+.Menu {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 20px;
+  border: 2px solid var(--primary-text);
+  padding: 10px;
+  border-radius: 28px;
+  margin-bottom: 30px;
+  position: fixed;
+  z-index: 999;
+}
+
+/* Panneau Options */
+.options-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(20, 10, 5, 0.95);
+    border: 2px solid var(--primary-text);
+    border-radius: 20px;
+    padding: 30px;
+    z-index: 1000;
+    text-align: center;
+    color: var(--secondary-text);
+    font-family: 'Poppins', sans-serif;
+    box-shadow: 0 0 30px rgba(0,0,0,0.8);
+}
+
+.options-panel h3 {
+    margin-top: 0;
+    font-size: 1.8rem;
+}
+
+.options-panel label {
+    display: block;
+    margin: 15px 0;
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
+.options-panel input[type="radio"] {
+    margin-right: 10px;
+}
+
+#apply-options {
+    margin-top: 20px;
+    padding: 12px 30px;
+    background: var(--button);
+    color: var(--secondary-text);
+    border: none;
+    border-radius: 12px;
+    font-weight: 900;
+    font-size: 1.1rem;
+    cursor: pointer;
+}
+
+/* ========================
+EFEFT DE GALSSMORPHISME
+======================= */
+
+/* LES ITEMS DU JEU */
+.items {
+  padding: 20px 10px;
+  border-radius: 24px;
+  color: var(--secondary-text);
+  font-family: 'Cinzel';
+  
+  /* 1. La base translucide */
+  background: rgba(255, 255, 255, 0.05);
+  
+  /* 2. L'effet de flou et la saturation de la lumière */
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%); /* Pour Safari */
+  
+  /* 3. L'éclairage des bords (Edge Lighting) */
+  /* On simule la lumière qui frappe le bord supérieur gauche */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  
+  /* 4. Les ombres (Profondeur externe + reflet interne) */
+  box-shadow: 
+    0 8px 32px 0 rgba(0, 0, 0, 0.25),         /* Ombre portée douce */
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05); /* Reflet interne subtil */
+  
+  /* 5. Préparation pour l'animation au survol */
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.items:hover {
+  /* Soulèvement et léger zoom */
+  transform: translateY(-5px) scale(1.02);
+  
+  /* Le verre devient légèrement plus opaque en s'approchant de la lumière */
+  background: rgba(255, 255, 255, 0.1);
+  
+  /* L'éclairage des bords s'intensifie */
+  border-top: 1px solid rgba(255, 255, 255, 0.5);
+  border-left: 1px solid rgba(255, 255, 255, 0.4);
+  
+  /* L'ombre portée s'agrandit pour accentuer l'élévation */
+  box-shadow: 
+    0 15px 40px 0 rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+.items::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    to right, 
+    rgba(255, 255, 255, 0) 0%, 
+    rgba(255, 255, 255, 0.1) 50%, 
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: skewX(-20deg);
+  transition: all 0.6s ease;
+}
+.items:hover::before {
+  left: 200%;
+}
+
+/* LES INFOS DU JOUEUR AYANT LA MACNE */
+.info-joueur {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  gap: 280px;
+}
+.joueur1 {
+  margin-right: 400px;
+}
+
+/* LES INFORMATIONS LIEES AU JEU */
+.info {
+    max-height: 200px;
+    overflow-y: auto;
+    background: rgba(0,0,0,0.3);
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid var(--primary-text);
+    width: 100%;
+    margin-top: 30px;
+    box-sizing: border-box;
+}
+
+
+.joueur1, .joueur2 {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 900;
+  font-size: 1.5rem;
+  color: var(--secondary-text);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  background: rgba(139, 69, 19, 0.3);
+  padding: 15px 40px;
+  border-radius: 10px;
+  border: 2px solid var(--primary-text);
+}
+
+/* Plateau - tabouret sculpté */
+.board {
+  background: var(--ndbg);
+  border-radius: 20px 20px 40px 40px;
+  box-shadow: 
+    0 20px 40px rgba(0,0,0,0.5),
+    0 0 0 8px #5c3a1e,
+    0 0 0 12px #3d2210;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 700px;
+  border-collapse: separate;
+  border-spacing: 15px;
+  margin-top: 148px;
+}
+
+/* Bordure géométrique Bamoun */
+.board::before {
+  content: '';
+  position: absolute;
+  inset: -25px;
+  border: 4px solid var(--primary-text);
+  opacity: 0.4;
+  z-index: -1;
+  border-radius: 25px 25px 45px 45px;
+  clip-path: polygon(
+    0% 15px, 15px 0%, 30px 15px, 45px 0%, 60px 15px,
+    75px 0%, 90px 15px, calc(100% - 15px) 0%, 100% 15px,
+    100% calc(100% - 15px), calc(100% - 15px) 100%,
+    calc(100% - 30px) calc(100% - 15px), calc(100% - 45px) 100%,
+    calc(100% - 60px) calc(100% - 15px), calc(100% - 75px) 100%,
+    calc(100% - 90px) calc(100% - 15px), calc(100% - 105px) 100%,
+    0% 100%
+  );
+}
+
+/* Cases - coupelles en argile */
+td {
+  background: radial-gradient(circle at 50% 40%, #d4a76a, #8b5a2b 80%);
+  border-radius: 50%;
+  box-shadow: 
+    inset 0 4px 8px rgba(0,0,0,0.4),
+    0 2px 4px rgba(0,0,0,0.3);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  position: relative;
+  width: 80px;
+  height: 80px;
+  text-align: center;
+  font-size: 2rem;
+  color: var(--secondary-text);
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+}
+
+td:hover {
+  background: radial-gradient(circle at 50% 40%, #e6c084, #a06b35 80%);
+  box-shadow: 
+    inset 0 4px 12px rgba(0,0,0,0.5),
+    0 0 30px rgba(218,165,32,0.6);
+  transform: scale(1.1);
+  z-index: 2;
+}
+
+/* ======================
+  MENU PRINCIPALE
+====================== */
+
+/* ========== MENU PRINCIPAL ========== */
+.main-menu {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at center, #3b2a1a 0%, #1e1107 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.main-title {
+    font-family: 'Cinzel', serif;
+    font-weight: 900;
+    font-size: 5rem;
+    color: var(--primary-text);
+    text-shadow: 0 0 20px rgba(218,165,32,0.5);
+    margin-bottom: 0;
+}
+
+.subtitle {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.2rem;
+    color: var(--secondary-text);
+    margin-bottom: 50px;
+}
+
+.menu-buttons {
+  font-family: 'Poppins';
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 90%;
+    max-width: 400px;
+}
+
+.menu-btn {
+    padding: 18px 30px;
+    font-family: 'Cinzel', sans-serif;
+    font-weight: 900;
+    font-size: 1.2rem;
+    background: var(--button);
+    color: var(--secondary-text);
+    border: 2px solid var(--primary-text);
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.menu-btn:hover {
+    background: var(--primary-text);
+    color: #1e1107;
+    transform: scale(1.05);
+    box-shadow: 0 0 25px rgba(218,165,32,0.6);
+}
+
+.menu-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    text-decoration: line-through;
+}

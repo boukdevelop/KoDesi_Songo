@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+		<meta http-equiv="CONTENT-TYPE" content="text/html; charset=UTF-8">
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Poppins:wght@600;900&display=swap" rel="stylesheet">
+		<link rel="stylesheet" href="styles/variables.css"/>
+		<link rel="stylesheet" href="styles/style.css"/>
+
+		<title>SONGO</title>
+</head>
+<body>
+
+	<!-- ENSEMBLE DU MENU DU JEU -->
+	<div class="Menu">
+		<div class="items" id="menu">Menu</div>
+		<div class="items" id="options">Options</div>	
+		<div class="items" id="credits">Credits</div>	
+	</div>
+
+	<!-- =================================
+	MENU --------- PRINCIPALE
+	================================ -->
+    <div id="main-menu" class="main-menu">
+        <h1 class="main-title">SONGO</h1>
+        <p class="subtitle">Jeu de semailles traditionnel Ekang</p>
+        <div class="menu-buttons">
+            <button id="btn-pvp" class="menu-btn">👥 Jouer contre un ami</button>
+            <button id="btn-pve" class="menu-btn">🤖 Jouer contre l'ordinateur</button>
+            <button id="btn-online" class="menu-btn disabled" disabled>🌐 Jouer en ligne (bientôt)</button>
+        </div>
+        <p class="credit-text" style="margin-top: 40px;">© 2026 K-Songo (KoDesi Songo) · Crédits</p>
+    </div>
+
+	<!-- Panneau Options (caché par défaut) -->
+	<div id="options-panel" class="options-panel" style="display: none;">
+		<h3>Mode de jeu</h3>
+		<label>
+			<input type="radio" name="gameMode" value="pvp" checked> Joueur vs Joueur
+		</label>
+		<label>
+			<input type="radio" name="gameMode" value="pve"> Joueur vs IA
+		</label>
+		<button id="apply-options">Appliquer & Nouvelle partie</button>
+	</div>
+
+	<!-- INFO CONCERNANT LES DIFFERENTS JOUEURS, IA COMME PERSONNE -->
+		<div class="info-joueur">
+			<!-- INFO DU JOUEUR N°1 -->
+			<div class="joueur1">
+				<span>JOUEUR 1 :</span>
+				<div class="message1"></div>
+				<div>Graines</div>
+				<span id="score1">0</span>
+			</div>
+
+			<!-- INFO DU JOUEUR N°2 -->
+			<div class="joueur2">
+				<span>JOUEUR 2 :</span>
+				<div class="message2"></div>
+				<div>Graines</div>
+				<span id="score2">0</span>
+			</div>
+
+		</div>
+		
+		<div class="contain">
+
+			<!--≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈
+				Tableau du SONGO
+			≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈	-->
+			<table class="board">
+			 <!--Premiere ligne du tableau-->
+				<tr class="line1">
+					<td></td>
+					<td></td>
+					<td></td>
+					<td></td>
+					<td></td>
+					<td></td>
+					<td></td>
+				</tr>
+								
+				<!--Deuxième ligne du tableau-->
+				<tr class="line2">
+					<td></td>
+					<td></td>
+					<td></td>
+					<td></td>
+					<td></td>
+					<td></td>
+					<td></td>
+				</tr>
+			</table>
+
+			<div class="info">
+
+			</div>
+		</div>
+		
+		<script src="scripts/navigation.js"></script>
+		<script src="scripts/script.js"></script>
+</body>
+</html>
