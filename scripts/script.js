@@ -9,24 +9,23 @@ const gameState = {
     scores: { player1: 0, player2: 0 },
     currentPlayer: 1,     // 1 = bas, 2 = haut
     gameOver: false,
-    gameMode: 'pvp',      // 'pvp' ou 'pve'
-    history: [],          // historique pour l'affichage
-    waitingForAI: false   // empêche les clics pendant que l'IA joue
+    gameMode: 'pvp',      // 'pvp', 'pve', 'online'
+    history: [],
+    waitingForAI: false,
+    waitingForServer: false, // bloque les clics en ligne tant que le serveur n'a pas changé le tour
+    onlinePlayerNumber: null // 1 ou 2 en mode online
 };
 
 // ================ CYCLE DE SEMIS ================
-// Ordre absolu des cases dans la boucle (14 positions)
 const cycle = [
     [1,6],[1,5],[1,4],[1,3],[1,2],[1,1],[1,0],  // bas de droite à gauche
     [0,0],[0,1],[0,2],[0,3],[0,4],[0,5],[0,6]   // haut de gauche à droite
 ];
 
-// Index de chaque case dans le cycle
 function cycleIndex(row, col) {
     return cycle.findIndex(([r,c]) => r === row && c === col);
 }
 
-// Case suivante dans le cycle
 function nextHole(row, col) {
     const idx = cycleIndex(row, col);
     const nextIdx = (idx + 1) % 14;
@@ -94,18 +93,14 @@ function addSeeds(row, col, amount) {
 }
 
 // ================ RÈGLES DU SONGO ================
-
-// Retourne la rangée du joueur (0 pour joueur 2 haut, 1 pour joueur 1 bas)
 function playerRow(player) {
     return player === 1 ? 1 : 0;
 }
 
-// Retourne l'adversaire
 function opponent(player) {
     return player === 1 ? 2 : 1;
 }
 
-// Nombre de graines qu'un coup distribuerait dans le camp adverse
 function seedsToOpponent(row, col) {
     const initial = getCell(row, col);
     if (initial === 0) return 0;
@@ -113,14 +108,12 @@ function seedsToOpponent(row, col) {
     let [r, c] = [row, col];
     for (let i = 0; i < initial; i++) {
         [r, c] = nextHole(r, c);
-        if (r !== row) count++;  // camp adverse
+        if (r !== row) count++;
     }
     return count;
 }
 
-// Vérifie si le coup est interdit (case 7 + 1 ou 2 graines chez l’adversaire)
 function isForbidden(row, col, player) {
-    // case 7 = colonne 6 pour le joueur bas (rangée 1), colonne 0 pour le joueur haut (rangée 0)
     const ownRow = playerRow(player);
     const isSeven = (ownRow === 1 && col === 6) || (ownRow === 0 && col === 0);
     if (!isSeven) return false;
@@ -128,16 +121,13 @@ function isForbidden(row, col, player) {
     return opp === 1 || opp === 2;
 }
 
-// Vérifie si le coup est légal (case non vide, pas interdit, sauf si solidarité force)
 function isLegalMove(row, col, player, checkSolidarity = true) {
     if (getCell(row, col) === 0) return false;
     if (row !== playerRow(player)) return false;
-    // Si solidarité obligatoire, on accepte même les coups interdits
     if (checkSolidarity && isForbidden(row, col, player)) return false;
     return true;
 }
 
-// Retourne les coups légaux pour un joueur
 function legalMoves(player, checkSolidarity = true) {
     const row = playerRow(player);
     const moves = [];
@@ -149,32 +139,28 @@ function legalMoves(player, checkSolidarity = true) {
     return moves;
 }
 
-// Distribution des graines (retourne la dernière case)
+// Distribution des graines (retourne [lastRow, lastCol])
 function sow(row, col, player) {
     const initialSeeds = getCell(row, col);
     let seeds = initialSeeds;
     emptyCell(row, col);
 
-    // Si > 13 : un tour complet sans la case d'origine, puis uniquement camp adverse
     if (seeds > 13) {
-        // Tour complet sans remplir la case d'origine
         let [r, c] = [row, col];
         for (let i = 0; i < 13; i++) {
             [r, c] = nextHole(r, c);
             addSeeds(r, c, 1);
             seeds--;
         }
-        // Maintenant on sème exclusivement dans le camp adverse (rangée opposée)
         const oppRow = opponent(player) === 1 ? 1 : 0;
-        let oppCol = 0; // on commence toujours à la gauche du camp adverse (col 0)
+        let oppCol = 0;
         while (seeds > 0) {
             addSeeds(oppRow, oppCol, 1);
             seeds--;
-            oppCol = (oppCol + 1) % 7; // de gauche à droite en boucle
+            oppCol = (oppCol + 1) % 7;
         }
-        return [oppRow, (oppCol - 1 + 7) % 7]; // dernière case remplie
+        return [oppRow, (oppCol - 1 + 7) % 7];
     } else {
-        // Semis normal dans la boucle
         let [r, c] = [row, col];
         for (let i = 0; i < initialSeeds; i++) {
             [r, c] = nextHole(r, c);
@@ -187,38 +173,28 @@ function sow(row, col, player) {
 // Vérifie et effectue les captures
 function checkCaptures(lastRow, lastCol, player, initialSeeds) {
     const oppRow = opponent(player) === 1 ? 1 : 0;
-    const opponentFirstCol = (oppRow === 1) ? 6 : 0; // case n°1 adverse
+    const opponentFirstCol = (oppRow === 1) ? 6 : 0;
 
-    // Interdiction de vider totalement le camp adverse
     const oppEmpty = gameState.board[oppRow].every(v => v === 0);
-    if (oppEmpty) return; // aucune capture
+    if (oppEmpty) return;
 
-    // Détermine si le dernier coup tombe sur la case 1 adverse après un tour complet
     const isOpponentFirstHole = (lastRow === oppRow && lastCol === opponentFirstCol);
     const fullTurn = initialSeeds >= 14;
 
     let captured = 0;
-    // Si dernier coup = case 1 adverse et tour complet -> on ne prend qu'une graine
     if (isOpponentFirstHole && fullTurn) {
-        // On retire une graine (la dernière posée)
         if (getCell(lastRow, lastCol) > 0) {
             emptyCell(lastRow, lastCol);
             captured = 1;
         }
-        // Pas de chaîne possible ici (la règle le dit)
     } else {
-        // Capture normale : dernière case doit avoir 2 à 4 graines (adversaire)
         if (lastRow === oppRow) {
             const val = getCell(lastRow, lastCol);
             if (val >= 2 && val <= 4) {
                 captured += emptyCell(lastRow, lastCol);
-                // Capture en chaîne en remontant le chemin
-                // On reparcourt le chemin à l'envers depuis la dernière case
                 let [r, c] = [lastRow, lastCol];
                 const totalSteps = initialSeeds > 13 ? 13 + (initialSeeds - 13) : initialSeeds;
-                // Reculer pas à pas
                 for (let i = 0; i < totalSteps - 1; i++) {
-                    // Pour reculer d'un pas, on cherche la case précédente dans le cycle
                     const idx = cycleIndex(r, c);
                     const prevIdx = (idx - 1 + 14) % 14;
                     [r, c] = cycle[prevIdx];
@@ -226,18 +202,13 @@ function checkCaptures(lastRow, lastCol, player, initialSeeds) {
                         const v = getCell(r, c);
                         if (v >= 2 && v <= 4) {
                             captured += emptyCell(r, c);
-                        } else {
-                            break; // la chaîne s'arrête
-                        }
-                    } else {
-                        break; // on quitte le camp adverse
-                    }
+                        } else break;
+                    } else break;
                 }
             }
         }
     }
 
-    // Ajoute les captures au score du joueur
     if (captured > 0) {
         if (player === 1) gameState.scores.player1 += captured;
         else gameState.scores.player2 += captured;
@@ -246,33 +217,32 @@ function checkCaptures(lastRow, lastCol, player, initialSeeds) {
     }
 }
 
-// Solidarité : retourne les coups jouables quand le camp adverse est vide
+// Solidarité
 function solidarityMoves(player) {
     const oppRow = opponent(player) === 1 ? 1 : 0;
-    const ownRow = playerRow(player);
-    // Si le camp adverse n'est pas vide, pas de solidarité
     if (!gameState.board[oppRow].every(v => v === 0)) return null;
-
-    const allMoves = legalMoves(player, false); // on autorise les coups interdits
+    const allMoves = legalMoves(player, false);
     if (allMoves.length === 0) return [];
-
-    // Chercher un coup qui donne au moins 7 graines à l'adversaire
     const goodMoves = allMoves.filter(([r, c]) => seedsToOpponent(r, c) >= 7);
     if (goodMoves.length > 0) return goodMoves;
-
-    // Sinon, celui qui en donne le maximum
     const maxOpp = Math.max(...allMoves.map(([r, c]) => seedsToOpponent(r, c)));
     return allMoves.filter(([r, c]) => seedsToOpponent(r, c) === maxOpp);
 }
 
-// Applique un coup complet (semis + captures + règles de fin)
-function playMove(row, col, player) {
+// Filtrage des coups légaux (inclut solidarité)
+function getFilteredMoves(player) {
+    const oppRow = opponent(player) === 1 ? 1 : 0;
+    if (gameState.board[oppRow].every(v => v === 0)) {
+        const solMoves = solidarityMoves(player);
+        if (solMoves) return solMoves;
+    }
+    return legalMoves(player, true);
+}
+
+// Exécute un mouvement (semis + captures + vérification fin de partie) – pas de switch ni d'historique
+function executeMove(row, col, player) {
     const initialSeeds = getCell(row, col);
     const [lastRow, lastCol] = sow(row, col, player);
-
-    addHistoryEntry(`Joueur ${player} sème ${initialSeeds} graines depuis [${row},${col}]`);
-
-    // Vérifier l'interdiction de vider le camp adverse (les captures seront annulées si le camp adverse devient vide)
     const oppRow = opponent(player) === 1 ? 1 : 0;
     const willOppEmpty = gameState.board[oppRow].every(v => v === 0);
     if (!willOppEmpty) {
@@ -280,18 +250,19 @@ function playMove(row, col, player) {
     } else {
         addHistoryEntry(`Camp adverse vidé, aucune capture.`);
     }
+    return checkEndGame(player);
+}
 
-    // Vérifier les conditions de fin de partie
-    if (checkEndGame(player)) return;
-
-    // Changement de joueur
-    switchPlayer();
+// Joue un coup complet en local (historique + changement de tour)
+function playMove(row, col, player) {
+    addHistoryEntry(`Joueur ${player} sème ${getCell(row, col)} graines depuis [${row},${col}]`);
+    const finished = executeMove(row, col, player);
+    if (!finished) switchPlayer();
 }
 
 // Vérifie les conditions de fin de partie
 function checkEndGame(player) {
     const totalBoard = gameState.board[0].reduce((a,b)=>a+b,0) + gameState.board[1].reduce((a,b)=>a+b,0);
-    // Moins de 10 graines sur le plateau
     if (totalBoard < 10) {
         gameState.scores.player1 += gameState.board[1].reduce((a,b)=>a+b,0);
         gameState.scores.player2 += gameState.board[0].reduce((a,b)=>a+b,0);
@@ -301,17 +272,14 @@ function checkEndGame(player) {
         endGame();
         return true;
     }
-    // Un joueur atteint 40 graines
     if (gameState.scores.player1 >= 40 || gameState.scores.player2 >= 40) {
         endGame();
         return true;
     }
-    // Solidarité impossible
     const oppRow = opponent(player) === 1 ? 1 : 0;
     if (gameState.board[oppRow].every(v => v === 0)) {
         const moves = solidarityMoves(player);
         if (moves && moves.length === 0) {
-            // Aucun coup ne peut atteindre l'adversaire => fin
             gameState.scores.player1 += gameState.board[1].reduce((a,b)=>a+b,0);
             gameState.scores.player2 += gameState.board[0].reduce((a,b)=>a+b,0);
             gameState.board[0] = [0,0,0,0,0,0,0];
@@ -333,10 +301,17 @@ function endGame() {
     else if (gameState.scores.player1 === gameState.scores.player2) winner = 'Match nul !';
     else winner = (gameState.scores.player1 > gameState.scores.player2 ? 'Joueur 1' : 'Joueur 2') + ' gagne !';
     addHistoryEntry(`Partie terminée. ${winner}`);
-    alert(winner);
+
+    // En ligne : notifier le serveur et afficher les actions
+    if (gameState.gameMode === 'online' && socket) {
+        socket.emit('gameOver', gameState.scores.player1 >= 40 ? 1 : 2);
+        document.getElementById('online-actions').style.display = 'block';
+    } else {
+        alert(winner);
+    }
 }
 
-// Change de joueur (et déclenche l'IA si nécessaire)
+// Changement de joueur (local + IA)
 function switchPlayer() {
     gameState.currentPlayer = gameState.currentPlayer === 1 ? 2 : 1;
     highlightCurrentPlayer();
@@ -365,32 +340,18 @@ function highlightCurrentPlayer() {
     }
 }
 
-// ================ INTELLIGENCE ARTIFICIELLE ================
+// ================ INTELLIGENCE ARTIFICIELLE (PvE) ================
 function aiPlay() {
     if (gameState.gameOver) return;
     gameState.waitingForAI = true;
     const moves = getFilteredMoves(2);
     if (moves.length === 0) {
-        // Aucun coup possible -> fin de partie (normalement déjà géré)
         gameState.waitingForAI = false;
         return;
     }
-    // Choisir un coup au hasard parmi les coups légaux filtrés
     const [row, col] = moves[Math.floor(Math.random() * moves.length)];
-    playMove(row, col, 2);
+    handleCellClick(row, col);
     gameState.waitingForAI = false;
-}
-
-// ================ FILTRAGE DES COUPS (solidarité, interdits) ================
-function getFilteredMoves(player) {
-    const oppRow = opponent(player) === 1 ? 1 : 0;
-    // Solidarité ?
-    if (gameState.board[oppRow].every(v => v === 0)) {
-        const solMoves = solidarityMoves(player);
-        if (solMoves) return solMoves;
-    }
-    // Coups légaux normaux (sans les interdits)
-    return legalMoves(player, true);
 }
 
 // ================ GESTION DES CLICS ================
@@ -399,27 +360,49 @@ function handleCellClick(row, col) {
         alert('Partie terminée.');
         return;
     }
-    if (gameState.waitingForAI) return;
+    if (gameState.waitingForAI || gameState.waitingForServer) return;
 
     const player = gameState.currentPlayer;
-    // Vérifie que la case appartient au joueur
+
+    // Mode ONLINE
+    if (gameState.gameMode === 'online') {
+        // Vérifier que c'est bien notre tour
+        if (player !== gameState.onlinePlayerNumber) {
+            alert("Ce n'est pas votre tour.");
+            return;
+        }
+        // Vérifier validité locale
+        const allowedMoves = getFilteredMoves(player);
+        if (!allowedMoves.some(([r,c]) => r === row && c === col)) {
+            if (getCell(row, col) === 0) alert("Case vide.");
+            else if (isForbidden(row, col, player)) alert("Coup interdit.");
+            else alert("Coup non autorisé.");
+            return;
+        }
+
+        // Bloquer les clics jusqu'à la réponse du serveur
+        gameState.waitingForServer = true;
+        // Envoyer le coup au serveur
+        socket.emit('makeMove', { row, col, player });
+        // Exécuter localement (le serveur relaiera à l'autre)
+        addHistoryEntry(`Vous (Joueur ${player}) cliquez sur [${row},${col}]`);
+        const finished = executeMove(row, col, player);
+        // Ne pas changer de tour (le serveur le fera)
+        // Réactivera les clics quand turnChange sera reçu
+        return;
+    }
+
+    // Mode local (PvP / PvE)
     if (row !== playerRow(player)) {
         alert("Ce n'est pas votre rangée.");
         return;
     }
 
-    // Récupère la liste des coups autorisés (solidarité ou non)
     const allowedMoves = getFilteredMoves(player);
-    const isAllowed = allowedMoves.some(([r,c]) => r === row && c === col);
-
-    if (!isAllowed) {
-        if (getCell(row, col) === 0) {
-            alert("Case vide.");
-        } else if (isForbidden(row, col, player)) {
-            alert("Coup interdit (case 7 avec 1 ou 2 graines chez l’adversaire).");
-        } else {
-            alert("Coup non autorisé (solidarité).");
-        }
+    if (!allowedMoves.some(([r,c]) => r === row && c === col)) {
+        if (getCell(row, col) === 0) alert("Case vide.");
+        else if (isForbidden(row, col, player)) alert("Coup interdit (case 7 avec 1 ou 2 graines chez l’adversaire).");
+        else alert("Coup non autorisé (solidarité).");
         return;
     }
 
@@ -427,7 +410,196 @@ function handleCellClick(row, col) {
     playMove(row, col, player);
 }
 
-// ================ MENU OPTIONS ================
+// ================ MODE EN LIGNE (Socket.IO) ================
+let socket = null;
+const isOnlineAvailable = typeof io !== 'undefined';
+
+function initOnline() {
+    if (!isOnlineAvailable) {
+        alert("Socket.IO non disponible. Vérifiez votre connexion.");
+        return;
+    }
+    socket = io();
+
+    // Création de salon
+    socket.on('roomCreated', ({ code, playerNumber }) => {
+        document.getElementById('room-code-display').textContent = code;
+        document.getElementById('waiting-message').textContent = 'En attente de l’adversaire...';
+        document.getElementById('create-room-section').style.display = 'none';
+    });
+
+    // Début de partie
+    socket.on('gameStart', ({ currentTurn }) => {
+        document.getElementById('main-menu').style.display = 'none';
+        document.getElementById('game-screen').style.display = 'block';
+        document.getElementById('online-actions').style.display = 'none';
+        document.getElementById('options-panel').style.display = 'none';
+
+        resetBoardLocal();
+        gameState.gameMode = 'online';
+        gameState.onlinePlayerNumber = socket.playerNumber;
+        gameState.currentPlayer = currentTurn;
+        gameState.waitingForServer = false;
+        highlightCurrentPlayer();
+        addHistoryEntry('Partie en ligne démarrée !');
+
+        if (currentTurn !== socket.playerNumber) {
+            addHistoryEntry("En attente du coup de l'adversaire...");
+        }
+    });
+
+    // Coup adverse
+    socket.on('opponentMove', ({ row, col, player }) => {
+        addHistoryEntry(`L'adversaire (Joueur ${player}) joue en [${row},${col}]`);
+        executeMove(row, col, player);
+        // Le serveur enverra turnChange après
+    });
+
+    // Changement de tour décidé par le serveur
+    socket.on('turnChange', ({ currentTurn }) => {
+        gameState.currentPlayer = currentTurn;
+        gameState.waitingForServer = false;
+        highlightCurrentPlayer();
+        if (currentTurn === gameState.onlinePlayerNumber) {
+            addHistoryEntry('C’est votre tour.');
+        } else {
+            addHistoryEntry('Tour de l’adversaire...');
+        }
+    });
+
+    // Fin de partie (peut aussi être déclenchée par le client)
+    socket.on('gameOver', (winner) => {
+        if (!gameState.gameOver) {
+            gameState.gameOver = true;
+            updateScoreDisplay();
+            addHistoryEntry(`Partie terminée, joueur ${winner} gagne.`);
+            document.getElementById('online-actions').style.display = 'block';
+        }
+    });
+
+    // Revanche
+    socket.on('rematchRequest', () => {
+        if (confirm('L’adversaire propose une revanche. Accepter ?')) {
+            socket.emit('rematchAccept');
+            resetBoardLocal();
+            document.getElementById('online-actions').style.display = 'none';
+            addHistoryEntry('Revanche acceptée, nouvelle partie !');
+        }
+    });
+
+    socket.on('rematchStart', () => {
+        resetBoardLocal();
+        document.getElementById('online-actions').style.display = 'none';
+        addHistoryEntry('Revanche acceptée, nouvelle partie !');
+    });
+
+    // Déconnexion adverse
+    socket.on('opponentDisconnected', () => {
+        addHistoryEntry('L’adversaire s’est déconnecté.');
+        alert('L’adversaire a quitté la partie.');
+        document.getElementById('online-actions').style.display = 'none';
+        showMainMenu();
+    });
+
+    socket.on('error', (msg) => {
+        alert('Erreur : ' + msg);
+    });
+
+    // Boutons du panneau online
+    document.getElementById('btn-create-room').addEventListener('click', () => {
+        socket.emit('createRoom');
+    });
+
+    document.getElementById('btn-join-room').addEventListener('click', () => {
+        const code = document.getElementById('room-code-input').value.toUpperCase().trim();
+        if (code.length !== 4) {
+            alert('Code invalide (4 caractères).');
+            return;
+        }
+        socket.emit('joinRoom', code);
+    });
+
+    document.getElementById('btn-back-online').addEventListener('click', () => {
+        socket.disconnect();
+        document.getElementById('online-panel').style.display = 'none';
+        document.getElementById('main-menu').style.display = 'flex';
+    });
+
+    // Actions en jeu (revanche / quitter)
+    document.getElementById('btn-rematch').addEventListener('click', () => {
+        socket.emit('rematchRequest');
+        addHistoryEntry('Demande de revanche envoyée.');
+    });
+
+    document.getElementById('btn-leave-online').addEventListener('click', () => {
+        if (confirm('Quitter la partie en ligne ?')) {
+            socket.disconnect();
+            showMainMenu();
+        }
+    });
+}
+
+// Exécute un coup venant de l'adversaire (sans interaction)
+function executeOpponentMove(row, col, player) {
+    // Vérifie que la case n'est pas vide (sécurité)
+    if (getCell(row, col) === 0) return;
+    addHistoryEntry(`Adversaire (Joueur ${player}) sème depuis [${row},${col}]`);
+    executeMove(row, col, player);
+}
+
+// ================ RÉINITIALISATION ================
+function resetBoardLocal() {
+    gameState.board = [
+        [5,5,5,5,5,5,5],
+        [5,5,5,5,5,5,5]
+    ];
+    gameState.scores.player1 = 0;
+    gameState.scores.player2 = 0;
+    gameState.currentPlayer = 1;
+    gameState.gameOver = false;
+    gameState.history = [];
+    gameState.waitingForAI = false;
+    gameState.waitingForServer = false;
+    updateAllDisplay();
+    highlightCurrentPlayer();
+    document.querySelector('.info').innerHTML = '';
+    addHistoryEntry('Nouvelle partie');
+}
+
+function resetBoard() {
+    resetBoardLocal();
+    if (gameState.gameMode === 'online' && document.getElementById('online-actions')) {
+        document.getElementById('online-actions').style.display = 'none';
+    }
+}
+
+// ================ NAVIGATION ENTRE ÉCRANS ================
+function showMainMenu() {
+    document.getElementById('main-menu').style.display = 'flex';
+    document.getElementById('game-screen').style.display = 'none';
+    document.getElementById('online-panel').style.display = 'none';
+    if (socket) {
+        socket.disconnect();
+    }
+}
+
+function startGame(mode) {
+    gameState.gameMode = mode;
+    if (mode === 'online') {
+        document.getElementById('online-panel').style.display = 'block';
+        initOnline();
+    } else {
+        document.getElementById('main-menu').style.display = 'none';
+        document.getElementById('game-screen').style.display = 'block';
+        resetBoardLocal();
+        addHistoryEntry(`Mode : ${mode === 'pvp' ? 'Joueur vs Joueur' : 'Joueur vs IA'}`);
+        if (mode === 'pve' && gameState.currentPlayer === 2) {
+            setTimeout(() => aiPlay(), 1000);
+        }
+    }
+}
+
+// ================ MENU OPTIONS (dans le jeu) ================
 function setupOptionsPanel() {
     const optionsBtn = document.getElementById('options');
     const panel = document.getElementById('options-panel');
@@ -439,39 +611,41 @@ function setupOptionsPanel() {
 
     applyBtn.addEventListener('click', () => {
         const selectedMode = document.querySelector('input[name="gameMode"]:checked').value;
-        gameState.gameMode = selectedMode;
-        panel.style.display = 'none';
-        resetBoard();
-        addHistoryEntry(`Mode: ${selectedMode === 'pvp' ? 'Joueur vs Joueur' : 'Joueur vs IA'}`);
+        if (selectedMode === 'online') {
+            panel.style.display = 'none';
+            showMainMenu();
+            startGame('online');
+        } else {
+            gameState.gameMode = selectedMode;
+            resetBoardLocal();
+            panel.style.display = 'none';
+            addHistoryEntry(`Mode changé : ${selectedMode === 'pvp' ? 'Joueur vs Joueur' : 'Joueur vs IA'}`);
+        }
     });
-}
-
-// ================ RÉINITIALISATION ================
-function resetBoard() {
-    gameState.board = [
-        [5,5,5,5,5,5,5],
-        [5,5,5,5,5,5,5]
-    ];
-    gameState.scores.player1 = 0;
-    gameState.scores.player2 = 0;
-    gameState.currentPlayer = 1;
-    gameState.gameOver = false;
-    gameState.history = [];
-    gameState.waitingForAI = false;
-    updateAllDisplay();
-    highlightCurrentPlayer();
-    document.querySelector('.info').innerHTML = '';
-    addHistoryEntry('Nouvelle partie démarrée.');
 }
 
 // ================ INITIALISATION ================
 function initGame() {
-    resetBoard();
+    // Affiche le menu principal
+    document.getElementById('main-menu').style.display = 'flex';
+    document.getElementById('game-screen').style.display = 'none';
+    document.getElementById('online-panel').style.display = 'none';
+
+    // Boutons du menu principal
+    document.getElementById('btn-pvp').addEventListener('click', () => startGame('pvp'));
+    document.getElementById('btn-pve').addEventListener('click', () => startGame('pve'));
+    document.getElementById('btn-online').addEventListener('click', () => startGame('online'));
+
+    // Bouton "Menu" dans la barre de jeu -> retour au menu
+    document.getElementById('menu').addEventListener('click', () => {
+        if (confirm('Retourner au menu principal ? La partie en cours sera perdue.')) {
+            showMainMenu();
+        }
+    });
+
+    setupOptionsPanel();
     initEventListeners();
     addResetButton();
-    setupOptionsPanel();
-    highlightCurrentPlayer();
-    addHistoryEntry('Songo prêt. Que le meilleur gagne !');
 }
 
 function initEventListeners() {
@@ -483,55 +657,44 @@ function initEventListeners() {
     });
 }
 
+// Bouton "Nouvelle partie" (local) / "Revanche" (online)
 function addResetButton() {
     if (document.getElementById('reset-btn')) return;
     const btn = document.createElement('button');
     btn.id = 'reset-btn';
     btn.textContent = 'Nouvelle partie 🔄';
     btn.style.cssText = `
-        margin-top:30px;
-        padding: 20px 30px;
-        border-radius: 24px;
-        color: var(--secondary-text);
-        font-family: 'Cinzel';
-        
-        /* 1. La base translucide */
+        margin-top:30px; padding: 20px 30px; border-radius: 24px;
+        color: var(--secondary-text); font-family: 'Cinzel';
         background: rgba(255, 255, 255, 0.05);
-        
-        /* 2. L'effet de flou et la saturation de la lumière */
         backdrop-filter: blur(16px) saturate(120%);
-        -webkit-backdrop-filter: blur(16px) saturate(120%); /* Pour Safari */
-        
-        /* 3. L'éclairage des bords (Edge Lighting) */
-        /* On simule la lumière qui frappe le bord supérieur gauche */
+        -webkit-backdrop-filter: blur(16px) saturate(120%);
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-top: 1px solid rgba(255, 255, 255, 0.3);
         border-left: 1px solid rgba(255, 255, 255, 0.2);
-        
-        /* 4. Les ombres (Profondeur externe + reflet interne) */
-        box-shadow: 
-            0 8px 32px 0 rgba(0, 0, 0, 0.25),         /* Ombre portée douce */
-            inset 0 0 0 1px rgba(255, 255, 255, 0.05); /* Reflet interne subtil */
-        
-        /* 5. Préparation pour l'animation au survol */
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
         transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-        cursor: pointer;
-        position: relative;
-        overflow: hidden;
+        cursor: pointer; position: relative; overflow: hidden;
     `;
     btn.addEventListener('mouseover', () => {
         btn.style.transform = 'scale(1.05)';
-        btn.style.boxShadow = ` 
-            0 15px 40px 0 rgba(0, 0, 0, 0.35),
-            inset 0 0 0 1px rgba(255, 255, 255, 0.15);
-        `;
-        btn.style.borderTop = '1px solid rgba(255, 255, 255, 0.5)'
+        btn.style.boxShadow = `0 15px 40px 0 rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.15)`;
+        btn.style.borderTop = '1px solid rgba(255, 255, 255, 0.5)';
     });
     btn.addEventListener('mouseout', () => {
         btn.style.transform = 'scale(1)';
-        btn.style.boxShadow = 'none';
+        btn.style.boxShadow = '0 8px 32px 0 rgba(0, 0, 0, 0.25), inset 0 0 0 1px rgba(255, 255, 255, 0.05)';
+        btn.style.borderTop = '1px solid rgba(255, 255, 255, 0.3)';
     });
-    btn.addEventListener('click', resetBoard);
+    btn.addEventListener('click', () => {
+        if (gameState.gameMode === 'online') {
+            // Proposer une revanche au lieu de simplement réinitialiser
+            socket.emit('rematchRequest');
+            addHistoryEntry('Demande de revanche envoyée.');
+        } else {
+            resetBoard();
+        }
+    });
     document.querySelector('.contain').appendChild(btn);
 }
 

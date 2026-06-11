@@ -334,3 +334,28 @@ td:hover {
     cursor: not-allowed;
     text-decoration: line-through;
 }
+
+/* ===================
+INTERFACE EN LIGNE
+=================== */
+#room-code-display {
+    font-family: 'Cinzel', serif;
+    letter-spacing: 5px;
+    background: rgba(0,0,0,0.3);
+    display: inline-block;
+    padding: 10px 30px;
+    border-radius: 8px;
+}
+
+#online-panel input {
+    background: rgba(255,255,255,0.1);
+    border: 2px solid var(--primary-text);
+    color: var(--secondary-text);
+    border-radius: 8px;
+    text-align: center;
+    font-weight: bold;
+}
+
+#online-panel .menu-btn {
+    margin: 5px;
+}

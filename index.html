@@ -1,106 +1,110 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-		<meta http-equiv="CONTENT-TYPE" content="text/html; charset=UTF-8">
-		<link rel="preconnect" href="https://fonts.googleapis.com">
-		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-		<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Poppins:wght@600;900&display=swap" rel="stylesheet">
-		<link rel="stylesheet" href="styles/variables.css"/>
-		<link rel="stylesheet" href="styles/style.css"/>
-
-		<title>SONGO</title>
+    <meta http-equiv="CONTENT-TYPE" content="text/html; charset=UTF-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Poppins:wght@600;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/variables.css"/>
+    <link rel="stylesheet" href="styles/style.css"/>
+    <title>SONGO</title>
 </head>
 <body>
 
-	<!-- ENSEMBLE DU MENU DU JEU -->
-	<div class="Menu">
-		<div class="items" id="menu">Menu</div>
-		<div class="items" id="options">Options</div>	
-		<div class="items" id="credits">Credits</div>	
-	</div>
-
-	<!-- =================================
-	MENU --------- PRINCIPALE
-	================================ -->
+    <!-- ========== MENU PRINCIPAL (accueil) ========== -->
     <div id="main-menu" class="main-menu">
         <h1 class="main-title">SONGO</h1>
         <p class="subtitle">Jeu de semailles traditionnel Ekang</p>
         <div class="menu-buttons">
             <button id="btn-pvp" class="menu-btn">👥 Jouer contre un ami</button>
             <button id="btn-pve" class="menu-btn">🤖 Jouer contre l'ordinateur</button>
-            <button id="btn-online" class="menu-btn disabled" disabled>🌐 Jouer en ligne (bientôt)</button>
+            <button id="btn-online" class="menu-btn">🌐 Jouer en ligne</button>
+        </div>
+
+        <!-- Panneau du mode en ligne -->
+        <div id="online-panel" style="display: none; margin-top: 30px; text-align: center;">
+            <div id="create-room-section">
+                <button id="btn-create-room" class="menu-btn">Créer un salon</button>
+                <p id="room-code-display" style="font-size: 2rem; color: var(--primary-text); margin: 20px 0;"></p>
+                <p id="waiting-message" style="color: var(--secondary-text);"></p>
+            </div>
+            <div id="join-room-section" style="margin-top: 20px;">
+                <input type="text" id="room-code-input" placeholder="Entrez le code du salon" maxlength="4" style="padding: 10px; font-size: 1.2rem; text-transform: uppercase;">
+                <button id="btn-join-room" class="menu-btn">Rejoindre</button>
+            </div>
+            <button id="btn-back-online" class="menu-btn" style="margin-top: 20px;">Retour</button>
         </div>
         <p class="credit-text" style="margin-top: 40px;">© 2026 K-Songo (KoDesi Songo) · Crédits</p>
     </div>
 
-	<!-- Panneau Options (caché par défaut) -->
-	<div id="options-panel" class="options-panel" style="display: none;">
-		<h3>Mode de jeu</h3>
-		<label>
-			<input type="radio" name="gameMode" value="pvp" checked> Joueur vs Joueur
-		</label>
-		<label>
-			<input type="radio" name="gameMode" value="pve"> Joueur vs IA
-		</label>
-		<button id="apply-options">Appliquer & Nouvelle partie</button>
-	</div>
+    <!-- ========== ÉCRAN DE JEU (caché au début) ========== -->
+    <div id="game-screen" style="display: none;">
 
-	<!-- INFO CONCERNANT LES DIFFERENTS JOUEURS, IA COMME PERSONNE -->
-		<div class="info-joueur">
-			<!-- INFO DU JOUEUR N°1 -->
-			<div class="joueur1">
-				<span>JOUEUR 1 :</span>
-				<div class="message1"></div>
-				<div>Graines</div>
-				<span id="score1">0</span>
-			</div>
+        <!-- Barre de menu du jeu -->
+        <div class="Menu">
+            <div class="items" id="menu">Menu</div>
+            <div class="items" id="options">Options</div>	
+            <div class="items" id="credits">Credits</div>	
+        </div>
 
-			<!-- INFO DU JOUEUR N°2 -->
-			<div class="joueur2">
-				<span>JOUEUR 2 :</span>
-				<div class="message2"></div>
-				<div>Graines</div>
-				<span id="score2">0</span>
-			</div>
+        <!-- Panneau Options (caché) -->
+        <div id="options-panel" class="options-panel" style="display: none;">
+            <h3>Mode de jeu</h3>
+            <label>
+                <input type="radio" name="gameMode" value="pvp" checked> Joueur vs Joueur
+            </label>
+            <label>
+                <input type="radio" name="gameMode" value="pve"> Joueur vs IA
+            </label>
+            <button id="apply-options">Appliquer & Nouvelle partie</button>
+        </div>
 
-		</div>
-		
-		<div class="contain">
+        <!-- Infos joueurs -->
+        <div class="info-joueur">
+            <div class="joueur1">
+                <span>JOUEUR 1 :</span>
+                <div class="message1"></div>
+                <div>Graines</div>
+                <span id="score1">0</span>
+            </div>
+            <div class="joueur2">
+                <span>JOUEUR 2 :</span>
+                <div class="message2"></div>
+                <div>Graines</div>
+                <span id="score2">0</span>
+            </div>
+        </div>
 
-			<!--≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈
-				Tableau du SONGO
-			≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈	-->
-			<table class="board">
-			 <!--Premiere ligne du tableau-->
-				<tr class="line1">
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-				</tr>
-								
-				<!--Deuxième ligne du tableau-->
-				<tr class="line2">
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-				</tr>
-			</table>
+        <h1 class="titre">SONGO</h1>
 
-			<div class="info">
+        <div class="contain">
+            <h1 class="title">K-SONGO (KoDesi - SONGO)</h1>
 
-			</div>
-		</div>
-		
-		<script src="scripts/navigation.js"></script>
-		<script src="scripts/script.js"></script>
-		<script src="scripts/server.js"></script>
+            <!-- Plateau de jeu -->
+            <table class="board">
+                <tr class="line1">
+                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                </tr>
+                <tr class="line2">
+                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                </tr>
+            </table>
+
+            <!-- Actions en ligne (revanche, quitter) -->
+            <div id="online-actions" style="display: none; margin-top: 20px; text-align: center;">
+                <button id="btn-rematch" class="menu-btn">Proposer une revanche</button>
+                <button id="btn-leave-online" class="menu-btn">Quitter la partie en ligne</button>
+            </div>
+
+            <!-- Historique -->
+            <div class="info"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="scripts/script.js"></script>
 </body>
 </html>
+
+<!-- surrounded by idiots -->
