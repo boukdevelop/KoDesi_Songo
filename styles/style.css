@@ -1,6 +1,5 @@
 /* Fond de cour en terre battue */
 body {
-  background: radial-gradient(ellipse at center, #5a3e2b 0%, #2b1a0f 100%);
   position: relative;
   margin: 0;
   padding: 20px;
