@@ -432,9 +432,52 @@ function initOnline() {
 
     // Création de salon
     socket.on('roomCreated', ({ code, playerNumber }) => {
-        document.getElementById('room-code-display').textContent = code;
-        document.getElementById('waiting-message').textContent = 'En attente de l’adversaire...';
-        document.getElementById('create-room-section').style.display = 'none';
+        // Récupération des éléments
+        const createSection = document.getElementById('create-room-section');
+        const displayEl = document.getElementById('room-code-display');
+        const waitingMsg = document.getElementById('waiting-message');
+
+        alert('Salon créé, code : ' + code);
+        // Cacher le bouton "Créer un salon" et afficher le reste
+        createSection.style.display = 'none';
+
+        // Afficher le code en grand (on force les styles)
+        displayEl.textContent = 'Code : ' + code;
+        displayEl.style.display = 'block';
+        displayEl.style.fontSize = '2.5rem';
+        displayEl.style.color = 'var(--primary-text)';
+        displayEl.style.background = 'rgba(0,0,0,0.6)';
+        displayEl.style.padding = '20px';
+        displayEl.style.borderRadius = '12px';
+        displayEl.style.margin = '20px auto';
+
+        // Message d'attente
+        waitingMsg.textContent = 'En attente de l’adversaire...';
+        waitingMsg.style.display = 'block';
+
+        // Supprimer un éventuel ancien bouton copie
+        const oldCopy = document.getElementById('copy-room-btn');
+        if (oldCopy) oldCopy.remove();
+
+        // Créer un bouton "Copier"
+        const copyBtn = document.createElement('button');
+        copyBtn.id = 'copy-room-btn';
+        copyBtn.textContent = '📋 Copier';
+        copyBtn.className = 'menu-btn';
+        copyBtn.style.margin = '10px';
+        copyBtn.onclick = () => {
+            navigator.clipboard.writeText(code)
+                .then(() => {
+                    copyBtn.textContent = '✅ Copié !';
+                    setTimeout(() => copyBtn.textContent = '📋 Copier', 2000);
+                })
+                .catch(() => {
+                    alert('Copie manuelle : ' + code);
+                });
+        };
+
+        // Insérer le bouton après l'affichage du code
+        displayEl.parentNode.insertBefore(copyBtn, waitingMsg);
     });
 
     // Début de partie

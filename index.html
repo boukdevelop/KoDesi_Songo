@@ -14,6 +14,7 @@
 
     <!-- ========== MENU PRINCIPAL (accueil) ========== -->
     <div id="main-menu" class="main-menu">
+        <img src="images/bg_menu.png" alt="Image d'arriere plan du jeu, des mains de femmes en train de jouer" class="menu-bg">
         <h1 class="main-title">SONGO</h1>
         <p class="subtitle">Jeu de semailles traditionnel Ekang</p>
         <div class="menu-buttons">
@@ -26,9 +27,10 @@
         <div id="online-panel" style="display: none; margin-top: 30px; text-align: center;">
             <div id="create-room-section">
                 <button id="btn-create-room" class="menu-btn">Créer un salon</button>
-                <p id="room-code-display" style="font-size: 2rem; color: var(--primary-text); margin: 20px 0;"></p>
+                
                 <p id="waiting-message" style="color: var(--secondary-text);"></p>
             </div>
+            <p id="room-code-display" style="font-size: 2rem; color: var(--primary-text); margin: 20px 0;"></p>
             <div id="join-room-section" style="margin-top: 20px;">
                 <input type="text" id="room-code-input" placeholder="Entrez le code du salon" maxlength="4" style="padding: 10px; font-size: 1.2rem; text-transform: uppercase;">
                 <button id="btn-join-room" class="menu-btn">Rejoindre</button>

@@ -307,8 +307,12 @@ td:hover {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;   /* ← Changement clé */
     z-index: 2000;
+    overflow-y: auto;             /* Défilement vertical si besoin */
+    padding-top: 40px;           /* Un peu d’espace en haut */
+    padding-bottom: 40px;
+    box-sizing: border-box;
 }
 
 .main-title {
@@ -323,7 +327,7 @@ td:hover {
 .subtitle {
     font-family: 'Poppins', sans-serif;
     font-size: 1.2rem;
-    color: var(--secondary-text);
+    color: var(--bg);
     margin-bottom: 50px;
 }
 
@@ -341,7 +345,9 @@ td:hover {
     font-family: 'Cinzel', sans-serif;
     font-weight: 900;
     font-size: 1.2rem;
-    background: var(--button);
+    background: rgba(34, 139, 34, 0.555);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
     color: var(--secondary-text);
     border: 2px solid var(--primary-text);
     border-radius: 15px;
@@ -350,7 +356,7 @@ td:hover {
 }
 
 .menu-btn:hover {
-    background: var(--primary-text);
+    background: rgba(150, 103, 2, 0.8);
     color: #1e1107;
     transform: scale(1.05);
     box-shadow: 0 0 25px rgba(218,165,32,0.6);
@@ -387,4 +393,14 @@ INTERFACE EN LIGNE
     margin: 5px;
     max-height: 80vh;
     overflow-y: auto;
+}
+
+.menu-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: -1;
 }
