@@ -9,6 +9,10 @@ const io = new Server(server);
 
 // ==== Sert les fichiers depuis la racine du projet ====
 app.use(express.static(__dirname));
+// Route pour le keep-alive
+app.get('/keepalive', (req, res) => {
+    res.send('ok');
+});
 
 // Route par défaut : envoie index.html
 app.get('/', (req, res) => {

@@ -700,6 +700,22 @@ function initGame() {
     addResetButton();
 }
 
+// PING POUR RENDER
+// ========== KEEP-ALIVE pour éviter la mise en veille du serveur ==========
+function keepAlive() {
+    // Envoie un GET léger à la racine du serveur toutes les 5 minutes
+    setInterval(() => {
+        fetch('/keepalive', { method: 'GET' })
+            .catch(() => {}); // ignore les erreurs silencieusement
+    }, 5 * 60 * 1000); // 5 minutes (à ajuster : Render tolère 15 min)
+}
+
+// Appeler keepAlive() dès le chargement de la page
+document.addEventListener('DOMContentLoaded', () => {
+    keepAlive();
+    // Ton initGame est déjà appelé via DOMContentLoaded aussi, c’est ok.
+});
+
 function initEventListeners() {
     const cells = document.querySelectorAll('td');
     cells.forEach((cell, index) => {
