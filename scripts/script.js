@@ -350,16 +350,20 @@ function aiPlay() {
         return;
     }
     const [row, col] = moves[Math.floor(Math.random() * moves.length)];
-    handleCellClick(row, col);
+    // Appel depuis l'IA : on passe un paramètre pour ignorer waitingForAI
+    handleCellClick(row, col, true);
     gameState.waitingForAI = false;
 }
 
 // ================ GESTION DES CLICS ================
-function handleCellClick(row, col) {
+function handleCellClick(row, col, fromAI = false) {
     if (gameState.gameOver) {
         alert('Partie terminée.');
         return;
     }
+
+    if (gameState.waitingForServer) return;
+    if (!fromAI && gameState.waitingForAI) return;
     if (gameState.waitingForAI || gameState.waitingForServer) return;
 
     const player = gameState.currentPlayer;
