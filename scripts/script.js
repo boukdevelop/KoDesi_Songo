@@ -16,6 +16,8 @@ const gameState = {
     onlinePlayerNumber: null // 1 ou 2 en mode online
 };
 
+const SOW_DELAY = 350; // millisecondes entre chaque graine semée
+
 // ================ CYCLE DE SEMIS ================
 const cycle = [
     [1,6],[1,5],[1,4],[1,3],[1,2],[1,1],[1,0],  // bas de droite à gauche
@@ -87,6 +89,11 @@ function emptyCell(row, col) {
     return 0;
 }
 
+// Fonction temporelle
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 function addSeeds(row, col, amount) {
     gameState.board[row][col] += amount;
     updateBoardDisplay();
@@ -140,7 +147,7 @@ function legalMoves(player, checkSolidarity = true) {
 }
 
 // Distribution des graines (retourne [lastRow, lastCol])
-function sow(row, col, player) {
+async function sow(row, col, player) {
     const initialSeeds = getCell(row, col);
     let seeds = initialSeeds;
     emptyCell(row, col);
@@ -151,6 +158,7 @@ function sow(row, col, player) {
             [r, c] = nextHole(r, c);
             addSeeds(r, c, 1);
             seeds--;
+            await delay(SOW_DELAY);
         }
         const oppRow = opponent(player) === 1 ? 1 : 0;
         let oppCol = 0;
@@ -158,6 +166,7 @@ function sow(row, col, player) {
             addSeeds(oppRow, oppCol, 1);
             seeds--;
             oppCol = (oppCol + 1) % 7;
+            await delay(SOW_DELAY);
         }
         return [oppRow, (oppCol - 1 + 7) % 7];
     } else {
@@ -165,6 +174,7 @@ function sow(row, col, player) {
         for (let i = 0; i < initialSeeds; i++) {
             [r, c] = nextHole(r, c);
             addSeeds(r, c, 1);
+            await delay(SOW_DELAY);
         }
         return [r, c];
     }
@@ -240,9 +250,9 @@ function getFilteredMoves(player) {
 }
 
 // Exécute un mouvement (semis + captures + vérification fin de partie) – pas de switch ni d'historique
-function executeMove(row, col, player) {
+async function executeMove(row, col, player) {
     const initialSeeds = getCell(row, col);
-    const [lastRow, lastCol] = sow(row, col, player);
+    const [lastRow, lastCol] = await sow(row, col, player); // await ajouté
     const oppRow = opponent(player) === 1 ? 1 : 0;
     const willOppEmpty = gameState.board[oppRow].every(v => v === 0);
     if (!willOppEmpty) {
@@ -254,9 +264,9 @@ function executeMove(row, col, player) {
 }
 
 // Joue un coup complet en local (historique + changement de tour)
-function playMove(row, col, player) {
+async function playMove(row, col, player) {
     addHistoryEntry(`Joueur ${player} sème ${getCell(row, col)} graines depuis [${row},${col}]`);
-    const finished = executeMove(row, col, player);
+    const finished = await executeMove(row, col, player);
     if (!finished) switchPlayer();
 }
 
@@ -341,7 +351,7 @@ function highlightCurrentPlayer() {
 }
 
 // ================ INTELLIGENCE ARTIFICIELLE (PvE) ================
-function aiPlay() {
+async function aiPlay() {
     if (gameState.gameOver) return;
     gameState.waitingForAI = true;
     const moves = getFilteredMoves(2);
@@ -350,13 +360,12 @@ function aiPlay() {
         return;
     }
     const [row, col] = moves[Math.floor(Math.random() * moves.length)];
-    // Appel depuis l'IA : on passe un paramètre pour ignorer waitingForAI
-    handleCellClick(row, col, true);
+    await handleCellClick(row, col, true);   // await
     gameState.waitingForAI = false;
 }
 
 // ================ GESTION DES CLICS ================
-function handleCellClick(row, col, fromAI = false) {
+async function handleCellClick(row, col, fromAI = false) {
     if (gameState.gameOver) {
         alert('Partie terminée.');
         return;
@@ -364,18 +373,15 @@ function handleCellClick(row, col, fromAI = false) {
 
     if (gameState.waitingForServer) return;
     if (!fromAI && gameState.waitingForAI) return;
-    if (gameState.waitingForAI || gameState.waitingForServer) return;
 
     const player = gameState.currentPlayer;
 
     // Mode ONLINE
     if (gameState.gameMode === 'online') {
-        // Vérifier que c'est bien notre tour
         if (player !== gameState.onlinePlayerNumber) {
             alert("Ce n'est pas votre tour.");
             return;
         }
-        // Vérifier validité locale
         const allowedMoves = getFilteredMoves(player);
         if (!allowedMoves.some(([r,c]) => r === row && c === col)) {
             if (getCell(row, col) === 0) alert("Case vide.");
@@ -384,34 +390,33 @@ function handleCellClick(row, col, fromAI = false) {
             return;
         }
 
-        // Bloquer les clics jusqu'à la réponse du serveur
         gameState.waitingForServer = true;
-        // Envoyer le coup au serveur
         socket.emit('makeMove', { row, col, player });
-        // Exécuter localement (le serveur relaiera à l'autre)
         addHistoryEntry(`Vous (Joueur ${player}) cliquez sur [${row},${col}]`);
-        const finished = executeMove(row, col, player);
-        // Ne pas changer de tour (le serveur le fera)
-        // Réactivera les clics quand turnChange sera reçu
+        const finished = await executeMove(row, col, player);
         return;
     }
 
     // Mode local (PvP / PvE)
     if (row !== playerRow(player)) {
-        alert("Ce n'est pas votre rangée.");
+        if (!fromAI) alert("Ce n'est pas votre rangée.");
         return;
     }
 
     const allowedMoves = getFilteredMoves(player);
     if (!allowedMoves.some(([r,c]) => r === row && c === col)) {
-        if (getCell(row, col) === 0) alert("Case vide.");
-        else if (isForbidden(row, col, player)) alert("Coup interdit (case 7 avec 1 ou 2 graines chez l’adversaire).");
-        else alert("Coup non autorisé (solidarité).");
+        if (getCell(row, col) === 0) {
+            if (!fromAI) alert("Case vide.");
+        } else if (isForbidden(row, col, player)) {
+            if (!fromAI) alert("Coup interdit (case 7 avec 1 ou 2 graines chez l’adversaire).");
+        } else {
+            if (!fromAI) alert("Coup non autorisé (solidarité).");
+        }
         return;
     }
 
-    addHistoryEntry(`Joueur ${player} clique sur [${row},${col}]`);
-    playMove(row, col, player);
+    if (!fromAI) addHistoryEntry(`Joueur ${player} clique sur [${row},${col}]`);
+    await playMove(row, col, player);
 }
 
 // ================ MODE EN LIGNE (Socket.IO) ================
@@ -453,10 +458,10 @@ function initOnline() {
     });
 
     // Coup adverse
-    socket.on('opponentMove', ({ row, col, player }) => {
+    socket.on('opponentMove', async ({ row, col, player }) => {
         addHistoryEntry(`L'adversaire (Joueur ${player}) joue en [${row},${col}]`);
-        executeMove(row, col, player);
-        // Le serveur enverra turnChange après
+        await executeMove(row, col, player);
+        // LE serveur enverra turnChange après
     });
 
     // Changement de tour décidé par le serveur
@@ -544,11 +549,11 @@ function initOnline() {
 }
 
 // Exécute un coup venant de l'adversaire (sans interaction)
-function executeOpponentMove(row, col, player) {
-    // Vérifie que la case n'est pas vide (sécurité)
+async function executeOpponentMove(row, col, player) {
+    // Vérifie que la case n'est pas vide (Sécurité)
     if (getCell(row, col) === 0) return;
     addHistoryEntry(`Adversaire (Joueur ${player}) sème depuis [${row},${col}]`);
-    executeMove(row, col, player);
+    await executeMove(row, col, player);
 }
 
 // ================ RÉINITIALISATION ================
